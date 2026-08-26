@@ -1,0 +1,6 @@
+.breadcrumb{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);margin-bottom:18px}
+.breadcrumb a{color:var(--text-2);text-decoration:none}.breadcrumb a:hover{color:var(--accent)}
+.breadcrumb span{color:var(--text);font-weight:500}.breadcrumb .sep{color:var(--muted)}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.detail-item label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;font-weight:600}
+.detail-item p{font-size:14px;font-weight:500;color:var(--text)}
