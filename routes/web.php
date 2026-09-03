@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{AsignacionController,AuthController,BusquedaController,CartaCustodiaController,ConfiguracionController,DepartamentoController,DispositivoController,EmpleadoController,EmpleadoImportController,ExportController,ImportController,RenovacionController,RenovacionEntregaController,ReporteController,SolicitudEntregaController,UsuarioController};
+use App\Http\Controllers\{BloqueController,AsignacionController,AuthController,BusquedaController,CartaCustodiaController,ConfiguracionController,DepartamentoController,DispositivoController,EmpleadoController,EmpleadoImportController,ExportController,ImportController,RenovacionController,RenovacionEntregaController,ReporteController,SolicitudEntregaController,UsuarioController};
 use Illuminate\Support\Facades\Route;
 
 Route::get('login',[AuthController::class,'showLogin'])->name('login');
@@ -12,7 +12,6 @@ Route::middleware('auth')->group(function(){
 
     Route::resource('empleados',EmpleadoController::class)->parameters(['empleados'=>'empleado']);
 
-    // Rutas especificas de dispositivos ANTES del resource
     Route::get('dispositivos/{dispositivo}/carta',[CartaCustodiaController::class,'desde_dispositivo'])->name('dispositivos.carta');
     Route::get('dispositivos/{dispositivo}/historial',[AsignacionController::class,'historial'])->name('dispositivos.historial');
     Route::get('dispositivos/{dispositivo}/baja',[DispositivoController::class,'confirmarBaja'])->name('dispositivos.confirmar_baja');
@@ -26,7 +25,6 @@ Route::middleware('auth')->group(function(){
     Route::get('dispositivos/{dispositivo}/devolver',[AsignacionController::class,'devolver'])->name('asignaciones.devolver');
     Route::post('dispositivos/{dispositivo}/devolver',[AsignacionController::class,'procesarDevolucion'])->name('asignaciones.procesar_devolucion');
 
-    // Entrega por Renovacion ANTES del resource de renovaciones
     Route::get('renovaciones/entrega/crear',[RenovacionEntregaController::class,'create'])->name('renovaciones.entregar')->middleware('solo_admin');
     Route::post('renovaciones/entrega',[RenovacionEntregaController::class,'store'])->name('renovaciones.entregar.store')->middleware('solo_admin');
     Route::get('renovaciones/{renovacion}/carta',[CartaCustodiaController::class,'desde_renovacion'])->name('renovaciones.carta');
@@ -53,6 +51,11 @@ Route::middleware('auth')->group(function(){
         Route::get('equipos-danados',[ReporteController::class,'equiposDanados'])->name('equipos_danados');
         Route::get('comprados',[ReporteController::class,'comprados'])->name('comprados');
     });
+
+    // Bloques
+    Route::get('bloques/reporte',[BloqueController::class,'reporte'])->name('bloques.reporte');
+    Route::post('bloques/{bloque}/cambiar-bloque',[BloqueController::class,'cambiarBloque'])->name('bloques.cambiar')->middleware('solo_admin');
+    Route::resource('bloques',BloqueController::class)->parameters(['bloques'=>'bloque']);
 
     // Solicitudes de Entrega
     Route::get('solicitudes',[SolicitudEntregaController::class,'index'])->name('solicitudes.index');
