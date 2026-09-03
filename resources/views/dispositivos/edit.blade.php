@@ -16,7 +16,32 @@
             <div class="form-group"><label>Color</label><input type="text" name="color" value="{{ old('color',$dispositivo->color) }}"></div>
             <div class="form-group"><label>Fecha de Compra</label><input type="date" name="fecha_compra" value="{{ old('fecha_compra',$dispositivo->fecha_compra?->format('Y-m-d')) }}"></div>
             <div class="form-group"><label>Costo (Q)</label><input type="number" name="costo" value="{{ old('costo',$dispositivo->costo) }}" step="0.01" min="0"></div>
+
+            {{-- BLOQUE OBLIGATORIO --}}
+            <div class="form-group full">
+                <label>Bloque *</label>
+                <select name="bloque_id" required class="{{ $errors->has('bloque_id')?'is-invalid':'' }}" onchange="mostrarInfoBloque(this)">
+                    <option value="">— Seleccionar bloque —</option>
+                    @foreach($bloques as $b)
+                    <option value="{{ $b->id }}"
+                        data-gama="{{ $b->gama_label }}"
+                        data-costo="{{ number_format($b->costo_mensual_linea,2) }}"
+                        data-operadora="{{ $b->operadora ?? '—' }}"
+                        {{ old('bloque_id',$dispositivo->bloque_id)==$b->id?'selected':'' }}>
+                        {{ $b->nombre }} — {{ $b->gama_label }} — Q {{ number_format($b->costo_mensual_linea,2) }}/mes
+                        @if($b->operadora) ({{ $b->operadora }})@endif
+                    </option>
+                    @endforeach
+                </select>
+                @error('bloque_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div id="info-bloque" style="margin-top:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;display:none;gap:20px;flex-wrap:wrap">
+                    <div><span style="font-size:11px;color:var(--muted)">Gama</span><p id="b-gama" style="font-weight:600;font-size:13px;color:var(--accent)">—</p></div>
+                    <div><span style="font-size:11px;color:var(--muted)">Costo mensual/linea</span><p id="b-costo" style="font-weight:700;font-size:13px;color:var(--success)">—</p></div>
+                    <div><span style="font-size:11px;color:var(--muted)">Operadora</span><p id="b-operadora" style="font-size:13px">—</p></div>
+                </div>
+            </div>
         </div>
+
         <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:18px;margin-top:16px">
             <p style="font-weight:600;font-size:13px;margin-bottom:14px">Ciclo de renovacion *</p>
             <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
@@ -28,4 +53,18 @@
         <div class="form-actions"><button type="submit" class="btn btn-primary">Actualizar Dispositivo</button><a href="{{ route('dispositivos.show',$dispositivo) }}" class="btn btn-secondary">Cancelar</a></div>
     </form>
 </div>
+@push('scripts')
+<script>
+function mostrarInfoBloque(sel) {
+    const opt  = sel.options[sel.selectedIndex];
+    const info = document.getElementById('info-bloque');
+    if (!opt || !opt.value) { info.style.display='none'; return; }
+    document.getElementById('b-gama').textContent     = opt.dataset.gama     || '—';
+    document.getElementById('b-costo').textContent    = 'Q '+opt.dataset.costo+'/mes';
+    document.getElementById('b-operadora').textContent= opt.dataset.operadora || '—';
+    info.style.display = 'flex';
+}
+document.addEventListener('DOMContentLoaded',()=>mostrarInfoBloque(document.querySelector('[name=bloque_id]')));
+</script>
+@endpush
 @endsection
