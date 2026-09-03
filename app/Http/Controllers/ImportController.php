@@ -102,10 +102,10 @@ class ImportController extends Controller
             if (isset($bloquesMap[$nombreBloque])) {
                 $bloqueId = $bloquesMap[$nombreBloque]->id;
             } else {
-                $advertencias[] = "Fila {$linea}: bloque '{$nombreBloque}' no encontrado. Dispositivo sin bloque asignado.";
+                return "Fila {$linea}: bloque '{$nombreBloque}' no existe en el sistema. Dispositivo NO importado. Verifica el nombre exacto del bloque.";
             }
         } else {
-            $advertencias[] = "Fila {$linea}: sin bloque especificado. Dispositivo sin bloque.";
+            return "Fila {$linea}: la columna 'bloque' es obligatoria. Dispositivo NO importado.";
         }
 
         $meses  = (int)($this->val($f,['meses_renovacion','meses','ciclo']) ?? $mesesDefault);
@@ -130,7 +130,7 @@ class ImportController extends Controller
             'numero_telefonico' => trim($this->val($f,['numero_telefonico','numero','telefono']) ?? '') ?: null,
             'operadora'         => trim($this->val($f,['operadora']) ?? '') ?: null,
             'color'             => trim($this->val($f,['color']) ?? '') ?: null,
-            'fecha_compra'      => trim($this->val($f,['fecha_compra','fecha']) ?? '') ?: null,
+            'fecha_compra'      => $this->parsearFecha(trim($this->val($f,['fecha_compra','fecha']) ?? '')),
             'costo'             => is_numeric($this->val($f,['costo','precio'])) ? (float)$this->val($f,['costo','precio']) : null,
             'meses_renovacion'  => $meses,
             'estado'            => $estado,
@@ -235,4 +235,28 @@ class ImportController extends Controller
             'Content-Disposition' => 'attachment; filename="plantilla_dispositivos.xlsx"',
         ]);
     }
+
+    /**
+     * Parsea fechas en multiples formatos: Y-m-d, d/m/Y, d-m-Y, m/d/Y
+     */
+    private function parsearFecha(string $valor): ?string
+    {
+        if (empty($valor)) return null;
+
+        // Intentar formatos comunes
+        $formatos = ['d/m/Y', 'd-m-Y', 'Y-m-d', 'm/d/Y', 'd/m/y', 'd-m-y'];
+        foreach ($formatos as $formato) {
+            $fecha = \DateTime::createFromFormat($formato, trim($valor));
+            if ($fecha && $fecha->format($formato === 'Y-m-d' ? 'Y-m-d' : $formato) === trim($valor)) {
+                return $fecha->format('Y-m-d');
+            }
+        }
+
+        // Ultimo intento con strtotime
+        $ts = strtotime($valor);
+        if ($ts !== false) return date('Y-m-d', $ts);
+
+        return null; // Si no se pudo parsear, ignorar la fecha
+    }
+
 }
