@@ -5,11 +5,23 @@
 <a href="{{ route('exportar.dispositivos', array_merge(request()->query(), ['tipo_baja'=>'comprado'])) }}" class="btn btn-success btn-sm">Excel</a>
 @endsection
 @section('content')
-<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);max-width:480px">
-    <div class="stat-card blue"><div class="stat-value">{{ $total }}</div><div class="stat-label">Total Comprados</div></div>
-    <div class="stat-card green"><div class="stat-value">Q {{ number_format($valorTotal,2) }}</div><div class="stat-label">Valor Total</div></div>
-    <div class="stat-card purple"><div class="stat-value">{{ $anio }}</div><div class="stat-label">Filtro Ano</div></div>
+
+{{-- Stats con tamaño controlado --}}
+<div style="display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+    <div class="stat-card blue" style="flex:0 0 160px">
+        <div style="font-size:36px;font-weight:800;color:var(--text);line-height:1;margin-bottom:5px">{{ $total }}</div>
+        <div class="stat-label">Total Comprados</div>
+    </div>
+    <div class="stat-card green" style="flex:0 0 220px">
+        <div style="font-size:15px;font-weight:700;color:var(--muted);margin-bottom:3px">Valor Total</div>
+        <div style="font-size:20px;font-weight:800;color:var(--success);line-height:1">Q {{ number_format($valorTotal,2) }}</div>
+    </div>
+    <div class="stat-card purple" style="flex:0 0 180px">
+        <div style="font-size:15px;font-weight:700;color:var(--muted);margin-bottom:3px">Filtro Ano</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text);line-height:1">{{ $anio }}</div>
+    </div>
 </div>
+
 <div class="card">
     <form method="GET" action="{{ route('reportes.comprados') }}">
         <div class="search-bar">
@@ -29,15 +41,14 @@
         <thead><tr>
             <th>N Serie</th><th>Dispositivo</th><th>IMEI</th>
             <th>Empleado</th><th>N Boleta</th><th>Costo (Q)</th>
-            <th>Fecha Compra</th><th>Observaciones</th>
+            <th>Fecha</th><th>Observaciones</th>
         </tr></thead>
         <tbody>
         @forelse($dispositivos as $d)
         @php
-            // Extraer datos de observaciones
             preg_match('/Empleado: ([^|]+)/', $d->observaciones ?? '', $mEmp);
-            preg_match('/Boleta: ([^|]+)/', $d->observaciones ?? '', $mBol);
-            preg_match('/Fecha: ([^|]+)/', $d->observaciones ?? '', $mFec);
+            preg_match('/Boleta: ([^|]+)/',   $d->observaciones ?? '', $mBol);
+            preg_match('/Fecha: ([^|]+)/',    $d->observaciones ?? '', $mFec);
             $empNombre = isset($mEmp[1]) ? trim($mEmp[1]) : '—';
             $boleta    = isset($mBol[1]) ? trim($mBol[1]) : '—';
             $fecha     = isset($mFec[1]) ? trim($mFec[1]) : '—';
@@ -50,8 +61,8 @@
             <td style="color:var(--accent);font-weight:600">{{ $boleta }}</td>
             <td>{{ $d->costo ? 'Q '.number_format($d->costo,2) : '—' }}</td>
             <td>{{ $fecha }}</td>
-            <td style="max-width:220px;font-size:12px;color:var(--muted)">
-                {{ $d->observaciones ? \Illuminate\Support\Str::limit($d->observaciones, 80) : '—' }}
+            <td style="max-width:200px;font-size:12px;color:var(--muted)">
+                {{ $d->observaciones ? \Illuminate\Support\Str::limit($d->observaciones,70) : '—' }}
             </td>
         </tr>
         @empty
