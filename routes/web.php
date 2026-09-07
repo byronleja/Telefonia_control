@@ -10,8 +10,11 @@ Route::middleware('auth')->group(function(){
     Route::get('/',fn()=>redirect()->route('reportes.index'));
     Route::get('buscar',[BusquedaController::class,'index'])->name('busqueda.index');
 
+    // Empleados + historial
+    Route::get('empleados/{empleado}/historial',[EmpleadoController::class,'historial'])->name('empleados.historial');
     Route::resource('empleados',EmpleadoController::class)->parameters(['empleados'=>'empleado']);
 
+    // Dispositivos
     Route::get('dispositivos/{dispositivo}/carta',[CartaCustodiaController::class,'desde_dispositivo'])->name('dispositivos.carta');
     Route::get('dispositivos/{dispositivo}/historial',[AsignacionController::class,'historial'])->name('dispositivos.historial');
     Route::get('dispositivos/{dispositivo}/baja',[DispositivoController::class,'confirmarBaja'])->name('dispositivos.confirmar_baja');
@@ -19,18 +22,21 @@ Route::middleware('auth')->group(function(){
     Route::post('dispositivos/{dispositivo}/restaurar',[DispositivoController::class,'restaurar'])->name('dispositivos.restaurar');
     Route::resource('dispositivos',DispositivoController::class)->parameters(['dispositivos'=>'dispositivo']);
 
+    // Asignaciones
     Route::get('asignaciones',[AsignacionController::class,'index'])->name('asignaciones.index');
     Route::get('asignaciones/crear',[AsignacionController::class,'create'])->name('asignaciones.create');
     Route::post('asignaciones',[AsignacionController::class,'store'])->name('asignaciones.store');
     Route::get('dispositivos/{dispositivo}/devolver',[AsignacionController::class,'devolver'])->name('asignaciones.devolver');
     Route::post('dispositivos/{dispositivo}/devolver',[AsignacionController::class,'procesarDevolucion'])->name('asignaciones.procesar_devolucion');
 
+    // Renovaciones
     Route::get('renovaciones/entrega/crear',[RenovacionEntregaController::class,'create'])->name('renovaciones.entregar')->middleware('solo_admin');
     Route::post('renovaciones/entrega',[RenovacionEntregaController::class,'store'])->name('renovaciones.entregar.store')->middleware('solo_admin');
     Route::get('renovaciones/{renovacion}/carta',[CartaCustodiaController::class,'desde_renovacion'])->name('renovaciones.carta');
     Route::delete('adjuntos/{adjunto}',[RenovacionController::class,'eliminarAdjunto'])->name('adjuntos.destroy');
     Route::resource('renovaciones',RenovacionController::class)->parameters(['renovaciones'=>'renovacion']);
 
+    // Importar
     Route::get('importar',[ImportController::class,'index'])->name('importar.index');
     Route::post('importar',[ImportController::class,'store'])->name('importar.store');
     Route::get('importar/plantilla',[ImportController::class,'plantilla'])->name('importar.plantilla');
@@ -38,11 +44,17 @@ Route::middleware('auth')->group(function(){
     Route::post('importar/empleados',[EmpleadoImportController::class,'store'])->name('importar.empleados.store');
     Route::get('importar/empleados/plantilla',[EmpleadoImportController::class,'plantilla'])->name('importar.empleados.plantilla');
 
+    // Exportar — todos los reportes
     Route::get('exportar/empleados',[ExportController::class,'empleados'])->name('exportar.empleados');
     Route::get('exportar/dispositivos',[ExportController::class,'dispositivos'])->name('exportar.dispositivos');
     Route::get('exportar/renovaciones',[ExportController::class,'renovaciones'])->name('exportar.renovaciones');
     Route::get('exportar/alertas-renovacion',[ExportController::class,'alertasRenovacion'])->name('exportar.alertas');
+    Route::get('exportar/asignaciones',[ExportController::class,'asignaciones'])->name('exportar.asignaciones');
+    Route::get('exportar/bloques',[ExportController::class,'bloques'])->name('exportar.bloques');
+    Route::get('exportar/solicitudes',[ExportController::class,'solicitudes'])->name('exportar.solicitudes');
+    Route::get('exportar/historial-empleado/{empleado}',[ExportController::class,'historialEmpleado'])->name('exportar.historial.empleado');
 
+    // Reportes
     Route::prefix('reportes')->name('reportes.')->group(function(){
         Route::get('/',[ReporteController::class,'index'])->name('index');
         Route::get('renovaciones',[ReporteController::class,'renovaciones'])->name('renovaciones');

@@ -10,11 +10,27 @@
 <div class="card">
     <div class="card-header"><span class="card-title">Equipos proximos a vencer o vencidos</span><span class="badge badge-danger">{{ $dispositivos->count() }}</span></div>
     <div class="table-wrap"><table>
-        <thead><tr><th>N Serie</th><th>Dispositivo</th><th>Empleado</th><th>Depto.</th><th>F. Asignacion</th><th>F. Vencimiento</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>N Serie</th><th>Dispositivo</th><th>Bloque</th><th>Empleado</th><th>Depto.</th><th>F. Asignacion</th><th>F. Vencimiento</th><th>Estado</th><th></th></tr></thead>
         <tbody>
         @foreach($dispositivos as $d)
         @php $mr=$d->meses_para_renovacion; @endphp
-        <tr><td style="font-weight:600">{{ $d->numero_serie }}</td><td>{{ $d->nombre_completo }}</td><td>{{ $d->empleado?->nombre_completo??'—' }}</td><td style="color:var(--muted)">{{ $d->empleado?->departamento??'—' }}</td><td>{{ $d->fecha_asignacion->format('d/m/Y') }}</td><td>{{ $d->fecha_vencimiento_renovacion?->format('d/m/Y')??'—' }}</td><td><span class="badge badge-{{ $mr<=0?'danger':'warning' }}">{{ $mr<=0?'Vencido hace '.abs($mr).'m':$mr.' mes(es) restantes' }}</span></td><td><a href="{{ route('dispositivos.show',$d) }}" class="btn btn-secondary btn-sm">Ver</a></td></tr>
+        <tr>
+            <td style="font-weight:600">{{ $d->numero_serie }}</td>
+            <td>{{ $d->nombre_completo }}</td>
+            <td>
+                @if($d->bloque)
+                <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $d->bloque->color_etiqueta }}18;border:1px solid {{ $d->bloque->color_etiqueta }};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:{{ $d->bloque->color_etiqueta }}">
+                    {{ $d->bloque->nombre }}
+                </span>
+                @else<span style="color:var(--muted);font-size:12px">—</span>@endif
+            </td>
+            <td>{{ $d->empleado?->nombre_completo??'—' }}</td>
+            <td style="color:var(--muted)">{{ $d->empleado?->departamento??'—' }}</td>
+            <td>{{ $d->fecha_asignacion->format('d/m/Y') }}</td>
+            <td>{{ $d->fecha_vencimiento_renovacion?->format('d/m/Y')??'—' }}</td>
+            <td><span class="badge badge-{{ $mr<=0?'danger':'warning' }}">{{ $mr<=0?'Vencido hace '.abs($mr).'m':$mr.' mes(es)' }}</span></td>
+            <td><a href="{{ route('dispositivos.show',$d) }}" class="btn btn-secondary btn-sm">Ver</a></td>
+        </tr>
         @endforeach
         </tbody>
     </table></div>

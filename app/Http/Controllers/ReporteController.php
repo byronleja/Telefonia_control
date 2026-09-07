@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\{Asignacion, Configuracion, Dispositivo, Empleado, Renovacion};
+use App\Models\{Bloque, Configuracion, Dispositivo, Empleado, Renovacion};
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -26,17 +26,17 @@ class ReporteController extends Controller
         $mesesGrafica = [];
         for ($i=11; $i>=0; $i--) {
             $d = now()->subMonths($i);
-            $total = Renovacion::whereYear('fecha_solicitud',$d->year)->whereMonth('fecha_solicitud',$d->month)->count();
             $mesesGrafica[] = [
                 'label'     => $d->format('M Y'),
-                'total'     => $total,
+                'total'     => Renovacion::whereYear('fecha_solicitud',$d->year)->whereMonth('fecha_solicitud',$d->month)->count(),
                 'entregadas'=> Renovacion::whereYear('fecha_solicitud',$d->year)->whereMonth('fecha_solicitud',$d->month)->where('estado','entregada')->count(),
                 'pendientes'=> Renovacion::whereYear('fecha_solicitud',$d->year)->whereMonth('fecha_solicitud',$d->month)->where('estado','pendiente')->count(),
             ];
         }
 
         $porDepartamento = Empleado::join('dispositivos','empleados.id','=','dispositivos.empleado_id')
-            ->where('dispositivos.estado','asignado')->selectRaw('empleados.departamento, count(*) as total')
+            ->where('dispositivos.estado','asignado')
+            ->selectRaw('empleados.departamento, count(*) as total')
             ->groupBy('empleados.departamento')->orderByDesc('total')->get();
 
         $topMarcas = Dispositivo::whereNotIn('estado',['dado_de_baja','en_reparacion'])
@@ -56,71 +56,77 @@ class ReporteController extends Controller
         if ($request->filled('anio'))    $query->whereYear('fecha_solicitud',$request->anio);
         if ($request->filled('desde'))   $query->where('fecha_solicitud','>=',$request->desde);
         if ($request->filled('hasta'))   $query->where('fecha_solicitud','<=',$request->hasta);
-        $renovaciones = $query->orderByDesc('fecha_solicitud')->paginate(15)->withQueryString();
+        $renovaciones      = $query->orderByDesc('fecha_solicitud')->paginate(15)->withQueryString();
         $ciclosDisponibles = Renovacion::join('dispositivos','renovaciones.dispositivo_nuevo_id','=','dispositivos.id')->distinct()->pluck('dispositivos.meses_renovacion')->sort()->values();
-        $anios = Renovacion::selectRaw('YEAR(fecha_solicitud) as anio')->distinct()->pluck('anio')->sortDesc()->values();
-        $totalBaja = Dispositivo::where('estado','dado_de_baja')->count();
+        $anios             = Renovacion::selectRaw('YEAR(fecha_solicitud) as anio')->distinct()->pluck('anio')->sortDesc()->values();
+        $totalBaja         = Dispositivo::where('estado','dado_de_baja')->count();
         return view('reportes.renovaciones', compact('renovaciones','ciclosDisponibles','anios','totalBaja'));
     }
 
     public function dispositivos(Request $request): View
     {
         $tieneAsignacion = \Illuminate\Support\Facades\Schema::hasColumn('dispositivos','fecha_asignacion');
-        $query = Dispositivo::with('empleado');
-        if ($request->filled('estado')) $query->where('estado',$request->estado);
-        else $query->whereNotIn('estado',['dado_de_baja','en_reparacion']);
-        if ($request->filled('tipo'))   $query->where('tipo',$request->tipo);
-        if ($request->filled('marca'))  $query->where('marca','like','%'.$request->marca.'%');
+        $query = Dispositivo::with(['empleado','bloque']);
+
+        if ($request->filled('estado'))    $query->where('estado',$request->estado);
+        else                               $query->whereNotIn('estado',['dado_de_baja','en_reparacion']);
+        if ($request->filled('tipo'))      $query->where('tipo',$request->tipo);
+        if ($request->filled('marca'))     $query->where('marca','like','%'.$request->marca.'%');
+        if ($request->filled('bloque_id')) {
+            if ($request->bloque_id === 'sin_bloque') $query->whereNull('bloque_id');
+            else $query->where('bloque_id',$request->bloque_id);
+        }
+
         $dispositivos = $query->orderBy('marca')->paginate(20)->withQueryString();
-        return view('reportes.dispositivos', compact('dispositivos','tieneAsignacion'));
+        $bloques      = Bloque::activos()->get();
+        return view('reportes.dispositivos', compact('dispositivos','tieneAsignacion','bloques'));
     }
 
     public function alertas(): View
     {
         $tieneAsignacion = \Illuminate\Support\Facades\Schema::hasColumn('dispositivos','fecha_asignacion');
         $dispositivos = $tieneAsignacion
-            ? Dispositivo::with('empleado')->where('estado','asignado')->get()->filter(fn($d)=>$d->meses_para_renovacion<=2)->sortBy('meses_para_renovacion')
+            ? Dispositivo::with(['empleado','bloque'])->where('estado','asignado')->get()
+                ->filter(fn($d)=>$d->meses_para_renovacion<=2)->sortBy('meses_para_renovacion')
             : collect();
         return view('reportes.alertas', compact('dispositivos','tieneAsignacion'));
     }
 
     public function equiposDanados(Request $request): View
     {
-        $query = Dispositivo::with('empleado')->whereIn('estado',['dado_de_baja','en_reparacion']);
-        // Excluir comprados de este reporte (tienen su propio reporte)
-        $query->where(fn($q) => $q->where('observaciones','not like','Comprado por empleado%')->orWhereNull('observaciones'));
-        if ($request->filled('estado')) $query->where('estado',$request->estado);
-        if ($request->filled('tipo'))   $query->where('tipo',$request->tipo);
-        if ($request->filled('marca'))  $query->where('marca','like','%'.$request->marca.'%');
+        $query = Dispositivo::with(['empleado','bloque'])->whereIn('estado',['dado_de_baja','en_reparacion'])
+            ->where(fn($q) => $q->where('observaciones','not like','Comprado por empleado%')->orWhereNull('observaciones'));
+        if ($request->filled('estado'))    $query->where('estado',$request->estado);
+        if ($request->filled('tipo'))      $query->where('tipo',$request->tipo);
+        if ($request->filled('marca'))     $query->where('marca','like','%'.$request->marca.'%');
+        if ($request->filled('bloque_id')) {
+            if ($request->bloque_id === 'sin_bloque') $query->whereNull('bloque_id');
+            else $query->where('bloque_id',$request->bloque_id);
+        }
         $totalDadosDeBaja  = Dispositivo::where('estado','dado_de_baja')->where(fn($q)=>$q->where('observaciones','not like','Comprado por empleado%')->orWhereNull('observaciones'))->count();
         $totalEnReparacion = Dispositivo::where('estado','en_reparacion')->count();
-        $dispositivos = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
-        return view('reportes.equipos_danados', compact('dispositivos','totalDadosDeBaja','totalEnReparacion'));
+        $dispositivos      = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
+        $bloques           = Bloque::activos()->get();
+        return view('reportes.equipos_danados', compact('dispositivos','totalDadosDeBaja','totalEnReparacion','bloques'));
     }
 
     public function comprados(Request $request): View
     {
-        $query = Dispositivo::where('estado','dado_de_baja')
+        $query = Dispositivo::with('bloque')->where('estado','dado_de_baja')
             ->where('observaciones','like','Comprado por empleado%');
-
-        if ($request->filled('buscar')) {
-            $b = $request->buscar;
-            $query->where(fn($q) => $q
-                ->where('numero_serie','like',"%{$b}%")
-                ->orWhere('observaciones','like',"%{$b}%")
-                ->orWhere('marca','like',"%{$b}%")
-                ->orWhere('modelo','like',"%{$b}%")
-            );
+        if ($request->filled('buscar'))    $query->where(fn($q)=>$q->where('numero_serie','like','%'.$request->buscar.'%')->orWhere('observaciones','like','%'.$request->buscar.'%')->orWhere('marca','like','%'.$request->buscar.'%')->orWhere('modelo','like','%'.$request->buscar.'%'));
+        if ($request->filled('marca'))     $query->where('marca','like','%'.$request->marca.'%');
+        if ($request->filled('bloque_id')) {
+            if ($request->bloque_id === 'sin_bloque') $query->whereNull('bloque_id');
+            else $query->where('bloque_id',$request->bloque_id);
         }
-        if ($request->filled('marca')) $query->where('marca','like','%'.$request->marca.'%');
-        if ($request->filled('anio'))  $query->whereYear('updated_at', $request->anio);
-
+        if ($request->filled('anio'))      $query->whereYear('updated_at',$request->anio);
         $dispositivos = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
-        $total       = $query->count();
-        $valorTotal  = $query->sum('costo');
-        $anios       = Dispositivo::where('estado','dado_de_baja')->where('observaciones','like','Comprado por empleado%')->selectRaw('YEAR(updated_at) as anio')->distinct()->pluck('anio')->sortDesc()->values();
-        $anio        = $request->filled('anio') ? $request->anio : 'Todos';
-
-        return view('reportes.comprados', compact('dispositivos','total','valorTotal','anios','anio'));
+        $total        = $dispositivos->total();
+        $valorTotal   = Dispositivo::where('estado','dado_de_baja')->where('observaciones','like','Comprado por empleado%')->sum('costo');
+        $anios        = Dispositivo::where('estado','dado_de_baja')->where('observaciones','like','Comprado por empleado%')->selectRaw('YEAR(updated_at) as anio')->distinct()->pluck('anio')->sortDesc()->values();
+        $anio         = $request->filled('anio') ? $request->anio : 'Todos';
+        $bloques      = Bloque::activos()->get();
+        return view('reportes.comprados', compact('dispositivos','total','valorTotal','anios','anio','bloques'));
     }
 }

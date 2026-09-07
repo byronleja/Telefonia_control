@@ -12,20 +12,57 @@ Los equipos <strong>dados de baja</strong> y <strong>en reparacion</strong> apar
     <form method="GET" action="{{ route('dispositivos.index') }}">
         <div class="search-bar">
             <div class="form-group"><label>Buscar</label><input type="text" name="buscar" value="{{ request('buscar') }}" placeholder="Serie, marca, IMEI..."></div>
-            <div class="form-group"><label>Estado</label><select name="estado"><option value="">Disponibles y Asignados</option><option value="disponible" {{ request('estado')==='disponible'?'selected':'' }}>Disponible</option><option value="asignado" {{ request('estado')==='asignado'?'selected':'' }}>Asignado</option></select></div>
-            <div class="form-group"><label>Tipo</label><select name="tipo"><option value="">Todos</option>@foreach(['smartphone'=>'Smartphone','basico'=>'Basico','tablet'=>'Tablet'] as $v=>$l)<option value="{{ $v }}" {{ request('tipo')===$v?'selected':'' }}>{{ $l }}</option>@endforeach</select></div>
+            <div class="form-group"><label>Bloque</label>
+                <select name="bloque_id">
+                    <option value="">Todos los bloques</option>
+                    <option value="sin_bloque" {{ request('bloque_id')==='sin_bloque'?'selected':'' }}>Sin bloque</option>
+                    @foreach($bloques as $b)
+                    <option value="{{ $b->id }}" {{ request('bloque_id')==$b->id?'selected':'' }}>
+                        {{ $b->nombre }} ({{ $b->gama_label }})
+                    </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group"><label>Estado</label>
+                <select name="estado">
+                    <option value="">Disponibles y Asignados</option>
+                    <option value="disponible" {{ request('estado')==='disponible'?'selected':'' }}>Disponible</option>
+                    <option value="asignado"   {{ request('estado')==='asignado'?'selected':'' }}>Asignado</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Tipo</label>
+                <select name="tipo">
+                    <option value="">Todos</option>
+                    @foreach(['smartphone'=>'Smartphone','basico'=>'Basico','tablet'=>'Tablet'] as $v=>$l)
+                    <option value="{{ $v }}" {{ request('tipo')===$v?'selected':'' }}>{{ $l }}</option>
+                    @endforeach
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary">Buscar</button>
             <a href="{{ route('dispositivos.index') }}" class="btn btn-secondary">Limpiar</a>
         </div>
     </form>
     <div class="table-wrap"><table>
-        <thead><tr><th>N Serie</th><th>Dispositivo</th><th>IMEI</th><th>Tipo</th><th>Estado</th><th>Empleado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>N Serie</th><th>Dispositivo</th><th>Bloque</th><th>IMEI</th><th>Tipo</th><th>Estado</th><th>Empleado</th><th>Acciones</th></tr></thead>
         <tbody>
         @forelse($dispositivos as $d)
         @php $em=['disponible'=>'success','asignado'=>'info']; @endphp
         <tr>
-            <td style="font-weight:600">{{ $d->numero_serie }}</td><td>{{ $d->nombre_completo }}</td>
-            <td style="color:var(--muted)">{{ $d->imei ?? '—' }}</td><td>{{ ucfirst($d->tipo) }}</td>
+            <td style="font-weight:600">{{ $d->numero_serie }}</td>
+            <td>{{ $d->nombre_completo }}</td>
+            <td>
+                @if($d->bloque)
+                <span style="display:inline-flex;align-items:center;gap:5px;background:{{ $d->bloque->color_etiqueta }}18;border:1px solid {{ $d->bloque->color_etiqueta }};border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;color:{{ $d->bloque->color_etiqueta }}">
+                    <span style="width:6px;height:6px;border-radius:50%;background:{{ $d->bloque->color_etiqueta }};flex-shrink:0"></span>
+                    {{ $d->bloque->nombre }}
+                </span>
+                <p style="font-size:10px;color:var(--muted);margin-top:2px">{{ $d->bloque->gama_label }} · Q{{ number_format($d->bloque->costo_mensual_linea,2) }}/m</p>
+                @else
+                <span style="color:var(--muted);font-size:12px">Sin bloque</span>
+                @endif
+            </td>
+            <td style="color:var(--muted);font-size:12px">{{ $d->imei ?? '—' }}</td>
+            <td>{{ ucfirst($d->tipo) }}</td>
             <td><span class="badge badge-{{ $em[$d->estado]??'secondary' }}">{{ ucfirst($d->estado) }}</span></td>
             <td>{{ $d->empleado?->nombre_completo ?? '—' }}</td>
             <td><div style="display:flex;gap:6px">
@@ -37,7 +74,9 @@ Los equipos <strong>dados de baja</strong> y <strong>en reparacion</strong> apar
                 @endif
             </div></td>
         </tr>
-        @empty<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">No hay dispositivos</td></tr>@endforelse
+        @empty
+        <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:40px">No hay dispositivos</td></tr>
+        @endforelse
         </tbody>
     </table></div>
     <div class="pagination">{{ $dispositivos->links() }}</div>
